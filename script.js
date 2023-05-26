@@ -28,3 +28,24 @@ map.on('contextmenu', function(e) {
         .setContent('<a href="' + formUrl + '" target="_blank">Submit a Contribution</a>')
         .openOn(map);
 });
+
+// Fetch data from Google Spreadsheet
+fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRopN1Q9G-HS1SbIVhD2w8-Lu06NeaWFrUVZ0E_ZQxBBvZ4eVi2vhwoB118vpdXHv9qFAmtIFkcRVHk/pub?output=csv')
+    .then(response => response.text())
+    .then(data => {
+        // Parse the CSV data
+        let csvData = Papa.parse(data, {header: true}).data;
+
+        // Iterate over each row in the data
+        for (let row of csvData) {
+            // Get the latitude and longitude from the row
+            let lat = row['Lat'];
+            let lng = row['Long'];
+            let name = row['Name'];
+            let experience = row['Share your experience in this place'];
+
+            // Add a marker to the map at the latitude and longitude
+            L.marker([lat, lng]).addTo(map)
+                .bindPopup(`<b>${name}</b><br>${experience}`);
+        }
+    });
