@@ -18,9 +18,9 @@ map.on('contextmenu', function(e) {
     var lng = e.latlng.lng;
 
     // Construct the prefilled form URL
-    var formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfVshvKF-CHQbuy5o5L9Nauy-FqD2KJpu0sn2pl6h9fKU5deA/viewform?usp=pp_url';
-    formUrl += '&entry.1616384067=' + lat;
-    formUrl += '&entry.163963794=' + lng;
+    var formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSdI-83LCMEzwYVzKuo0JdbJboqM-WnbOqfEv2iSOjohI1yw2Q/viewform?usp=pp_url';
+    formUrl += '&entry.2007238900=' + lat;
+    formUrl += '&entry.1635045261=' + lng;
 
     // Create a popup at the clicked location with a link to the form
     var popup = L.popup()
@@ -29,8 +29,31 @@ map.on('contextmenu', function(e) {
         .openOn(map);
 });
 
+// Initialize sentiment counts
+var sentimentCounts = { 'Positive': 0, 'Negative': 0, 'Neutral': 0, 'Unknown': 0 };
+
+// Initialize the sentiment info control
+var sentimentInfo = L.control();
+
+sentimentInfo.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+// method that we will use to update the control based on feature properties passed
+sentimentInfo.update = function () {
+    this._div.innerHTML = '<h4>Sentiment Statistics</h4>' + 
+                          'Positive: ' + sentimentCounts['Positive'] + '<br>' +
+                          'Negative: ' + sentimentCounts['Negative'] + '<br>' +
+                          'Neutral: ' + sentimentCounts['Neutral'] + '<br>' +
+                          'Unknown: ' + sentimentCounts['Unknown'];
+};
+
+sentimentInfo.addTo(map);
+
 // Fetch data from Google Spreadsheet
-fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRopN1Q9G-HS1SbIVhD2w8-Lu06NeaWFrUVZ0E_ZQxBBvZ4eVi2vhwoB118vpdXHv9qFAmtIFkcRVHk/pub?output=csv')
+fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vT0FPOu3T5WRAO5EtiN7usivXcRuOfbRTnjO5z1iaQGSGPdDIf-AyVB0IVm7YwTWHjSbCwFW6c9SVZP/pub?output=csv')
     .then(response => response.text())
     .then(data => {
         // Parse the CSV data
@@ -42,10 +65,37 @@ fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRopN1Q9G-HS1SbIVhD2w8-Lu
             let lat = row['Lat'];
             let lng = row['Long'];
             let name = row['Name'];
+            let date = row['Date'];
             let experience = row['Share your experience in this place'];
+            let sentiment = row['Was the experience...'];
 
-            // Add a marker to the map at the latitude and longitude
-            L.marker([lat, lng]).addTo(map)
-                .bindPopup(`<b>${name}</b><br>${experience}`);
+            // Increment sentiment count
+            if (sentiment in sentimentCounts) {
+                sentimentCounts[sentiment]++;
+            } else {
+                sentimentCounts['Unknown']++;
+            }
+
+            // Determine color based on sentiment
+            let color;
+            switch (sentiment) {
+                case 'Positive':
+                    color = 'green';
+                    break;
+                case 'Negative':
+                    color = 'red';
+                    break;
+                case 'Neutral':
+                    color = 'blue';
+                    break;
+                default:
+                    color = 'gray'; // default color if sentiment is missing or not recognized
+            }
+
+            // Add a circleMarker to the map at the latitude and longitude
+            L.circleMarker([lat, lng], { color: color }).addTo(map)
+                .bindPopup(`<b>${name}</b><br>${date}<br>${experience}`);
         }
+        sentimentInfo.update();// update the sentiment statistics
     });
+
